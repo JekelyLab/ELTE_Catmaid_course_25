@@ -1,0 +1,282 @@
+---
+title: "Analysis of the *Platynereis dumerilii* connectome with CATMAID and R"
+author: "Gáspár Jékely <br> Centre for Organismal Studies, Heidelberg University"
+format:
+  revealjs: 
+    theme: [default, custom.scss]
+    slide-number: true
+    code-fold: false
+    code-summary: "Code"
+    chalkboard: 
+      buttons: false
+    preview-links: auto
+scrollable: true
+---
+
+
+## Resources
+
+<br><br>
+
+- The [Tidyverse Cookbook](https://rstudio-education.github.io/tidyverse-cookbook/) (edited by Garrett Grolemund)
+<br><br>
+
+- [CATMAID Documentation](https://catmaid.readthedocs.io/en/stable/index.html)
+<br><br>
+
+- CATMAID paper: [Quantitative neuroanatomy for connectomics in Drosophila](https://elifesciences.org/articles/12059)
+<br><br>
+
+- The Natverse paper: [The natverse, a versatile toolbox for combining and analysing neuroanatomical data](https://elifesciences.org/articles/53350)
+
+  
+## Part 2 - Packages, project management, data import, tidy data
+
+<br>
+
+- some rules on files, folders
+- R projects
+- installing and loading packages
+- project templates
+- importing various types of datasets
+- principles of tidy data, tidying of messy datasets
+
+## Go to GitHub and fork my repository
+
+<br><br>
+
+- Clone the repository: https://github.com/JekelyLab/ELTE_Catmaid_course_25
+- go to RStudio -> New Project -> Git -> repo's address
+- select local dir and download the project with all directories to your computer
+- let's check the project
+- open /analysis/scripts/Course_exercises.R
+
+## Rule nr. 1 -- relative working directories
+
+<br>
+
+```{r, eval=FALSE, echo=TRUE}
+#| code-fold: false
+getwd()
+```
+
+
+-   Never use absolute paths in your scripts, because they hinder sharing: no one else will have exactly the same directory configuration as you.
+
+- Do not use setwd() to set your working dir
+
+## Use R projects (.Rproj)
+
+<br>
+
+-   Keep all files associated with a project together — input data, R scripts, analytical results, figures. This is such a wise and common practice that RStudio has built-in support for this via **Rprojects**.
+
+-   If you create a new Rproject, your working dir will in general be where you save the new project
+
+-   Whenever you refer to a file with a relative path it will look for it in your working dir.
+
+- in case you used setwd() in a script (you should not) you can find your Rproject directory with here()
+
+```{r, eval=FALSE, echo=TRUE}
+here::here()
+
+#test, but you should not do this
+setwd("~")
+getwd()
+
+#get back to Rproj dir
+setwd(here::here())
+getwd()
+# all good again
+```
+
+## Use R projects (.Rproj)
+
+<br>
+
+- list files in your working dir 
+
+```{r, eval=TRUE, echo=TRUE}
+#| code-fold: false
+list.files()
+```
+
+
+## Project management
+
+<br><br><br>
+
+* Use folders relative to your main .Rproject file (e.g. My_next_report.Rproject)
+
+* Use a consistent directory structure to store code, data, text, figures, supplements, etc.
+
+* Can be ensured if you always use the same project template
+
+* Check the folder structure in the downloaded project template
+
+
+## Save and share your computer environment and packages
+
+```{r echo=TRUE, eval=TRUE}
+#save session info and Rstudio version info for reproducibility
+sessionInfo()
+writeLines(capture.output(sessionInfo()), "sessionInfo.txt")
+```
+
+
+## Installing packages
+
+* install the **tidyverse** package
+```{r, eval=FALSE, echo=TRUE}
+#| code-fold: false
+install.packages("tidyverse")
+```
+
+
+- then load the package
+```{r, eval=FALSE, echo=TRUE}
+#| code-fold: false
+library(tidyverse)
+library(png)
+```
+
+## Source packages and functions from one file
+
+<br><br>
+
+* open the R script analysis/scripts/Course_exercises.R with the example code
+
+* source several packages and functions, listed in one file consistently across scripts
+
+
+
+
+```{r, eval=TRUE, echo=TRUE, fig.height=5}
+source("analysis/scripts/packages_and_functions.R")
+```
+
+## Import neurons from CATMAID and plot
+
+
+
+```{r, eval=TRUE, echo=TRUE}
+#| code-fold: true
+
+#read the skeleton ids first
+neurons_skids <- skids_by_3annotations(
+  "episphere", "Sensory neuron", "adult eye"
+  )
+
+#load neurons
+neurons <- nlapply(
+    read.neurons.catmaid(
+      neurons_skids,
+      pid = 11
+    ),
+    function(x) smooth_neuron(x, sigma = 6000)
+  )
+
+plot_background_anterior()
+
+plot3d(
+  neurons,
+  WithConnectors = F, soma = T, lwd = 2,
+  add = T, alpha = 0.4,
+  col = "red"
+  )
+
+
+# Convert the rgl plot into an interactive htmlwidget
+rglwidget()
+
+
+```
+## Retrieve synaptic partners
+
+```{r, eval=TRUE, echo=TRUE}
+
+#find synaptic partners
+partners <- catmaid_query_connected(
+  neurons_skids, minimum_synapses = 10,
+  pid = 11
+  )
+partners
+
+```
+
+## Parse IDs and load synaptic partners
+
+```{r, eval=TRUE, echo=TRUE}
+
+#parse partner IDs
+outgoing_partner_skids <- unique(
+  partners$outgoing$partner
+  )
+
+#load partner neurons
+outgoing_partners <- nlapply(
+  read.neurons.catmaid(
+    outgoing_partner_skids,
+    pid = 11
+  ),
+  function(x) smooth_neuron(x, sigma = 6000)
+)
+```
+## Read neuron names and plot partners
+
+```{r, eval=TRUE, echo=TRUE}
+#| code-fold: false
+
+#get name of neurons
+catmaid_get_neuronnames(
+  outgoing_partner_skids, pid = 11
+  )
+
+
+#plot the partners to the same scene
+plot <- plot3d(
+  outgoing_partners,
+  WithConnectors = F, soma = T, lwd = 2,
+  add = T, alpha = 1,
+  col = blues[8]
+)
+
+# Convert the rgl plot into an interactive htmlwidget
+rglwidget()
+```
+
+## Add text label to RGL scene
+
+
+```{r, eval=TRUE, echo=TRUE}
+#| code-fold: false
+
+#add text label
+texts3d(
+  35000, 40000, 21000, 
+  text = "PRC", 
+  col = "black", cex = 2
+  )
+
+texts3d(
+  35000, 62000, 21000, 
+  text = "IN1", 
+  col = "black", cex = 2
+)
+
+rglwidget()
+```
+
+## Save RGL scene as png image
+
+
+```{r, eval=TRUE, echo=TRUE}
+#| code-fold: false
+
+#save rgl view as png
+rgl.snapshot("analysis/pictures/eye_with_IN1.png")
+
+#close RGL viewer
+close3d()
+
+```
