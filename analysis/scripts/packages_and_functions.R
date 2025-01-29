@@ -26,6 +26,7 @@ gc()
   library(rgl)
   library(plotly)
   library(htmltools)
+  library(ggraph)
 }
 
 
