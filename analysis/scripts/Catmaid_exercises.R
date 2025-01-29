@@ -167,5 +167,38 @@ webshot2::webshot(
   cliprect = c(300, 0, 500, 500), zoom = 5
 )
 
+# assemble figure --------------------
 
 
+img_anatomy <- readPNG("analysis/pictures/eye_with_IN1.png")
+img_graph <- readPNG("analysis/pictures/eye_circuit.png")
+
+# convert png to image panel
+panelA <- ggdraw() + draw_image(img_anatomy, scale = 1) +
+  draw_label("PRC and IN1",
+             x = 0.4, y = 0.98, fontfamily = "sans", fontface = "plain",
+             color = "black", size = 11
+             ) 
+panelB <- ggdraw() + draw_image(img_graph, scale = 1)
+
+# define layout with textual representation
+layout <- "
+AB
+"
+
+Figure1 <- panelA + panelB +
+  plot_layout(design = layout, widths = c(1, 1)) +
+  plot_annotation(tag_levels = "A") &
+  theme(plot.tag = element_text(size = 12, face = "plain"))
+
+
+ggsave("manuscript/figures/Figure1.pdf",
+       limitsize = FALSE,
+       units = c("px"), Figure1, width = 1600, height = 800
+)
+
+
+ggsave("manuscript/figures/Figure1.png",
+       limitsize = FALSE,
+       units = c("px"), Figure1, width = 1600, height = 800, bg = "white"
+)
