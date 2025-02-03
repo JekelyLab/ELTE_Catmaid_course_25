@@ -10,3 +10,5 @@ syn <- read_csv2(here::here("analysis/data/head_celltypes_syn_matrix.csv"))
 max_PRC <- syn |>
   select(PRC) |>
   max()
+
+n_syn_PRC_IN1 <- 307

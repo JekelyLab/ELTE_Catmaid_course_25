@@ -5,11 +5,14 @@ source("analysis/scripts/packages_and_functions.R")
 
 # loading neurons from CATMAID -----------------
 
+catmaid_skids("celltype1", pid = 11)
+skids_by_2annotations("celltype1", "right_side")
+
 # read the skeleton ids first
 neurons_skids <- skids_by_3annotations(
   "episphere", "Sensory neuron", "adult eye"
 )
-
+neurons_skids
 # load neurons
 neurons <- nlapply(
   read.neurons.catmaid(
@@ -23,10 +26,11 @@ neurons <- nlapply(
 plot_background_anterior()
 
 # plot the neurons on the same RGL viewer
+
 plot3d(
   neurons,
-  WithConnectors = F, soma = T, lwd = 2,
-  add = T, alpha = 0.4,
+  WithConnectors = TRUE, soma = TRUE, lwd = c(1:5),
+  add = TRUE, alpha = 0.4,
   col = "red"
 )
 
@@ -38,11 +42,11 @@ partners <- catmaid_query_connected(
   minimum_synapses = 10,
   pid = 11
 )
-partners
+
 
 # parse partner IDs
 outgoing_partner_skids <- unique(partners$outgoing$partner)
-
+outgoing_partner_skids
 # load neurons
 outgoing_partners <- nlapply(
   read.neurons.catmaid(
@@ -61,8 +65,8 @@ catmaid_get_neuronnames(
 # plot the partners to the same scene
 plot3d(
   outgoing_partners,
-  WithConnectors = F, soma = T, lwd = 2,
-  add = T, alpha = 1,
+  WithConnectors = TRUE, soma = TRUE, lwd = 2,
+  add = TRUE, alpha = 1,
   col = blues[8]
 )
 
@@ -86,12 +90,12 @@ close3d()
 # network analysis --------------
 
 # create graph with all nodes
-nodes <- data.frame(name = c("PRC", "IN1", "celltype3", "celltype4"))
+nodes <- data.frame(name = c("1", "2", "3", "4", "5", "6", "7", "8"))
 graph <- tbl_graph(nodes = nodes, directed = TRUE)
 graph
 
-for (i in 1:3) {
-  for (j in 1:3) {
+for (i in 1:8) {
+  for (j in 1:8) {
     neurons1 <- paste("celltype", i, sep = "")
     neurons2 <- paste("celltype", j, sep = "")
     # read the skeleton ids first
@@ -117,7 +121,10 @@ for (i in 1:3) {
   }
 }
 
-graph
+n_syn_PRC_IN1 <- graph |>
+  activate(edges) |>
+  slice(2) |> pull()
+n_syn_PRC_IN1
 
 ggraph(graph, layout = "stress") +
   geom_edge_link(arrow = arrow(length = unit(3, "mm")),
@@ -127,7 +134,7 @@ ggraph(graph, layout = "stress") +
   geom_node_text(aes(label = name)) +
   theme_graph()
 
-# plot as visNetowrk graph -------------------------
+# plot as visNetwork graph -------------------------
 
 
 ## convert to VisNetwork-list
@@ -153,10 +160,7 @@ visNet <- visNetwork(Conn_graph.visn$nodes, Conn_graph.visn$edges) %>%
       shape = "dot",
       font = list(color = "black", size = 44),
       scaling = list(label = list(enabled = TRUE, min = 34, max = 44))
-    ) %>%
-    visOptions(highlightNearest = list(
-      enabled = TRUE, degree = 1, algorithm = "hierarchical", labelOnly = FALSE)
-      )
+    )
 visNet 
   
 # save as html
@@ -183,22 +187,27 @@ panelB <- ggdraw() + draw_image(img_graph, scale = 1)
 
 # define layout with textual representation
 layout <- "
-AB
+ABCDEF
 "
 
-Figure1 <- panelA + panelB +
-  plot_layout(design = layout, widths = c(1, 1)) +
+Figure1 <- panelA + panelB +  panelA + panelB + 
+  panelA + panelB +
+  plot_layout(design = layout) +
   plot_annotation(tag_levels = "A") &
   theme(plot.tag = element_text(size = 12, face = "plain"))
 
 
 ggsave("manuscript/figures/Figure1.pdf",
        limitsize = FALSE,
-       units = c("px"), Figure1, width = 1600, height = 800
+       units = c("px"), Figure1, width = 2400, height = 1600
 )
 
 
 ggsave("manuscript/figures/Figure1.png",
        limitsize = FALSE,
-       units = c("px"), Figure1, width = 1600, height = 800, bg = "white"
+       units = c("px"), Figure1, width = 2400, height = 1600, bg = "white"
 )
+
+
+
+
